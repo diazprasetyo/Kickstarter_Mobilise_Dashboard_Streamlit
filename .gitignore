@@ -1,0 +1,18 @@
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
+# Mac/Windows files & folders
+.DS_Store
+Thumbs.db
+streamlit_app_old.py
+kickstarter_data.ipynb
+data_for_streamlit_demo.ipynb
+data/
+
+# VSCode settings (optional)
+.vscode/
+
+# Environment files (if any)
+.env
