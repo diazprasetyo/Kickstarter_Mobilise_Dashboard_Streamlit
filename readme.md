@@ -71,6 +71,7 @@ Every page follows a common, user-friendly template:
 ## File Structure
 
 - `streamlit_app.py`: Main dashboard app (add/modify visuals/logic here)
+- `requirements.txt`: Python dependencies for the dashboard.
 - `README.md`: You are here!
 
 ## Extending the Dashboard
