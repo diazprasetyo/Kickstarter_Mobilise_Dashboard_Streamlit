@@ -9,7 +9,6 @@ import time
 # Set page config
 st.set_page_config(
     page_title="Mobilise AU Dashboard",
-    # page_icon="📊",
     layout="wide"
 )
 
@@ -38,11 +37,6 @@ def load_data_from_sheets(sheets_url, sheet_tab=0):
         # Create month column for aggregation
         df['Month'] = df['Date'].dt.to_period('M').dt.to_timestamp()
         
-        # # Sum values for the same metric in the same month
-        # df = df.groupby(['Month', 'Pillar', 'Pillar_Name', 'Metric_Category', 'Agg_Metric', 'Unit']).agg({
-        #     'Agg_Value': 'sum'  # Sum all values for the same metric in the same month
-        # }).reset_index()
-        
         # Add back the Date column (using the month start date)
         df['Date'] = df['Month']
         
@@ -62,11 +56,6 @@ def load_data():
     
     # Create month column for aggregation
     df['Month'] = df['Date'].dt.to_period('M').dt.to_timestamp()
-    
-    # # Sum values for the same metric in the same month
-    # df = df.groupby(['Month', 'Pillar', 'Pillar_Name', 'Metric_Category', 'Agg_Metric', 'Unit']).agg({
-    #     'Agg_Value': 'sum'  # Sum all values for the same metric in the same month
-    # }).reset_index()
     
     # Add back the Date column (using the month start date)
     df['Date'] = df['Month']
@@ -122,11 +111,11 @@ else:
     if USE_GOOGLE_SHEETS:
         st.warning("Please update SHEETS_URL with your Google Sheets ID")
 
-# Display data info
-st.write(f"📊 Dataset: {len(df)} rows, {len(df.columns)} columns")
-st.write(f"📅 Date range: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
+# # Display data info
+# st.write(f"📊 Dataset: {len(df)} rows, {len(df.columns)} columns")
+# st.write(f"📅 Date range: {df['Date'].min().strftime('%Y-%m-%d')} to {df['Date'].max().strftime('%Y-%m-%d')}")
 
-# Time Series Function Definition
+# clean metric name Function Definition
 def clean_metric_name(metric_name):
     """Convert underscores to spaces and title-case for display."""
     return metric_name.replace('_', ' ').title()
@@ -1811,6 +1800,779 @@ elif page == "6. Engagement of the wider community":
             st.dataframe(pivot_data, use_container_width=True)
         else:
             st.info("No records for selected filters.")
+            
+# Page 7
+if page == "7. A cultural shift in society":
+    st.header("🌏 A Cultural Shift in Society")
+    df_p7 = df[df["Pillar"] == 7].copy()
+    df_p7["Date"] = pd.to_datetime(df_p7["Date"], dayfirst=True)
+
+    # ==== Sidebar Filters ====
+    st.sidebar.subheader("Filters (Page 7)")
+    min_date, max_date = df_p7["Date"].min(), df_p7["Date"].max()
+    if len(df_p7["Date"].unique()) == 1:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p7_date")
+    else:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p7_date")
+    if len(selected_range) == 1:
+        selected_range = [selected_range[0], selected_range[0]]
+
+    categories = df_p7["Metric_Category"].dropna().unique().tolist()
+    selected_categories = st.sidebar.multiselect(
+        "📂 Metric Category",
+        categories,
+        default=categories
+    )
+
+    # Apply filters
+    df_p7_filtered = df_p7[
+        (df_p7["Date"] >= pd.to_datetime(selected_range[0])) &
+        (df_p7["Date"] <= pd.to_datetime(selected_range[1])) &
+        (df_p7["Metric_Category"].isin(selected_categories))
+    ]
+
+    # ==== KPI CARDS ====
+    st.subheader("📊 Key Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+    latest_date = df_p7_filtered["Date"].max()
+    latest_data = df_p7_filtered[df_p7_filtered["Date"] == latest_date]
+
+    with col1:
+        pulse_responses = latest_data[latest_data['Agg_Metric'] == 'Total_pulse_responses']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_pulse_responses'].empty else 0
+        st.metric("Pulse Survey Responses", int(pulse_responses))
+    with col2:
+        avg_awareness_rate = latest_data[latest_data['Agg_Metric'] == 'Avg_mobilise_awareness_rate_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Avg_mobilise_awareness_rate_pulse'].empty else 0
+        st.metric("Awareness Rate (%)", f"{avg_awareness_rate:.1f}%")
+    with col3:
+        issue_understanding = latest_data[latest_data['Agg_Metric'] == 'Avg_issue_understanding_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Avg_issue_understanding_pulse'].empty else 0
+        st.metric("Issue Understanding (1-5)", f"{issue_understanding:.1f}")
+    with col4:
+        empathy_index = latest_data[latest_data['Agg_Metric'] == 'Empathy_act_index_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Empathy_act_index_pulse'].empty else 0
+        st.metric("Empathy Index (%)", f"{empathy_index:.1f}%")
+
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        complexity_ack = latest_data[latest_data['Agg_Metric'] == 'Complexity_ack_rate_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Complexity_ack_rate_pulse'].empty else 0
+        st.metric("Complexity Acknowledged (%)", f"{complexity_ack:.1f}%")
+    with col6:
+        struct_cause = latest_data[latest_data['Agg_Metric'] == 'Structural_cause_rate_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Structural_cause_rate_pulse'].empty else 0
+        st.metric("Structural Cause (%)", f"{struct_cause:.1f}%")
+    with col7:
+        pers_cause = latest_data[latest_data['Agg_Metric'] == 'Personal_cause_rate_pulse']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Personal_cause_rate_pulse'].empty else 0
+        st.metric("Personal Cause (%)", f"{pers_cause:.1f}%")
+    with col8:
+        media_mentions = latest_data[latest_data['Agg_Metric'] == 'Total_media_mentions_topic']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_media_mentions_topic'].empty else 0
+        st.metric("Media Mentions", int(media_mentions))
+
+    # ==== Tabs ====
+    tab1, tab2, tab3 = st.tabs([
+        "📊 Category Overview",
+        "📈 Time Series",
+        "🔍 Metric Details"
+    ])
+
+    # === Category Overview Tab ===
+    with tab1:
+        st.header("📊 Societal Change Overview")
+
+        # 1. Sentiment Trend Line (Empathy, Complexity, Structural Cause)
+        sentiment_codes = [
+            ('Empathy_act_index_pulse', 'Empathy (%)'),
+            ('Complexity_ack_rate_pulse', 'Complexity Acknowl. (%)'),
+            ('Structural_cause_rate_pulse', 'Structural Cause (%)'),
+            ('Personal_cause_rate_pulse', 'Personal Cause (%)')
+        ]
+        sentiment_vals = []
+        for code, label in sentiment_codes:
+            v = df_p7_filtered[df_p7_filtered['Agg_Metric'] == code][['Date', 'Agg_Value']].dropna()
+            for _, row in v.iterrows():
+                sentiment_vals.append({'Metric': label, 'Date': row['Date'], 'Value': row['Agg_Value']})
+        df_sentiment = pd.DataFrame(sentiment_vals)
+        if not df_sentiment.empty:
+            fig_sent = px.line(
+                df_sentiment, x="Date", y="Value", color="Metric", markers=True,
+                title="Sentiment & Public Attitude Trends"
+            )
+            st.plotly_chart(fig_sent, use_container_width=True)
+
+        # 2. Comparison Bar Chart (Media Mentions)
+        comp_codes = [
+            ("Total_media_mentions_topic", "Total Media Mentions"),
+            ("Total_media_mentions_constructive_topic", "Constructive Mentions"),
+            ("Total_media_mentions_PR_topic", "Mobilise-Generated")
+        ]
+        comp_vals = []
+        for code, label in comp_codes:
+            total = latest_data[latest_data['Agg_Metric'] == code]['Agg_Value'].sum()
+            comp_vals.append({'Type': label, 'Count': total})
+        df_comp = pd.DataFrame([row for row in comp_vals if row['Count'] > 0])
+        if not df_comp.empty:
+            fig_comp = px.bar(
+                df_comp, x="Type", y="Count", color="Type", text="Count",
+                title="Media Coverage Breakdown"
+            )
+            fig_comp.update_traces(textposition="outside")
+            fig_comp.update_layout(showlegend=False)
+            st.plotly_chart(fig_comp, use_container_width=True)
+
+        # 3. Issue Understanding Breakdown (Pulse)
+        pulse_codes = [
+            ("Avg_mobilise_awareness_rate_pulse", "Correctly Associate Mobilise (%)"),
+            ("Avg_issue_understanding_pulse", "Issue Understanding (1-5)"),
+        ]
+        pulse_vals = []
+        for code, label in pulse_codes:
+            pulse_score = latest_data[latest_data['Agg_Metric'] == code]['Agg_Value'].sum()
+            pulse_vals.append({'Theme': label, 'Score': pulse_score})
+        df_pulse = pd.DataFrame([row for row in pulse_vals if row['Score'] > 0])
+        if not df_pulse.empty:
+            fig_pulse = px.bar(
+                df_pulse, x="Theme", y="Score", color="Theme", text="Score",
+                title="Awareness & Understanding Scores"
+            )
+            fig_pulse.update_traces(textposition="outside")
+            fig_pulse.update_layout(showlegend=False)
+            st.plotly_chart(fig_pulse, use_container_width=True)
+
+        # 4. Platform Engagements (Comparison Chart)
+        platform_codes = [
+            ("Total_LinkedIn_Engagements", "LinkedIn"),
+            ("Total_Instagram_Engagements", "Instagram"),
+            ("Total_Facebook_Engagements", "Facebook"),
+            ("Total_TikTok_Engagements", "TikTok")
+        ]
+        plat_vals = []
+        for code, label in platform_codes:
+            plat_score = latest_data[latest_data['Agg_Metric'] == code]['Agg_Value'].sum()
+            plat_vals.append({'Platform': label, 'Engagements': plat_score})
+        df_plat = pd.DataFrame([row for row in plat_vals if row['Engagements'] > 0])
+        if not df_plat.empty:
+            fig_platform = px.bar(
+                df_plat, x="Platform", y="Engagements", color="Platform", text="Engagements",
+                title="Social Platform Engagements"
+            )
+            fig_platform.update_traces(textposition="outside")
+            fig_platform.update_layout(showlegend=False)
+            st.plotly_chart(fig_platform, use_container_width=True)
+
+        # 5. Info blocks for Qual Themes, Map
+        st.info("Word cloud, qualitative themes, and demographic/regional breakdowns will display here when text or coded group data are available.")
+
+    # === Time Series Tab ===
+    with tab2:
+        # Time series analysis
+        st.subheader("📈 Metrics Over Time")
+        
+        # Select metric for time series
+        available_metrics = df_p7_filtered['Agg_Metric'].unique()
+        metric_mapping = {clean_metric_name(metric): metric for metric in available_metrics}
+        clean_metric_names = list(metric_mapping.keys())
+        
+        selected_clean_metric = st.selectbox("Select Metric for Time Series", clean_metric_names)
+        selected_metric = metric_mapping[selected_clean_metric]
+
+        metric_data = df_p7_filtered[df_p7_filtered['Agg_Metric'] == selected_metric]
+        if not metric_data.empty:
+            fig_ts = px.line(
+                metric_data, x='Date', y='Agg_Value',
+                title=f"{selected_clean_metric} Over Time",
+                markers=True
+            )
+            fig_ts.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Value"
+            )
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.info("No data for this metric.")
+
+    # === Metric Details Tab ===
+    with tab3:
+        st.subheader("🔍 Detailed Metrics")
+        if not df_p7_filtered.empty:
+            pivot_data = df_p7_filtered.pivot_table(
+                values='Agg_Value',
+                index='Agg_Metric',
+                columns='Date',
+                aggfunc='first'
+            ).reset_index()
+            st.dataframe(pivot_data, use_container_width=True)
+        else:
+            st.info("No records for selected filters.")
+            
+# Page 8
+if page == "8. People progressing post-homelessness":
+    st.header("🏠 People Progressing Post-Homelessness")
+    df_p8 = df[df["Pillar"] == 8].copy()
+    df_p8["Date"] = pd.to_datetime(df_p8["Date"], dayfirst=True)
+
+    # === Sidebar Filters ===
+    st.sidebar.subheader("Filters (Page 8)")
+    min_date, max_date = df_p8["Date"].min(), df_p8["Date"].max()
+    if len(df_p8["Date"].unique()) == 1:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p8_date")
+    else:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p8_date")
+    if len(selected_range) == 1:
+        selected_range = [selected_range[0], selected_range[0]]
+
+    categories = df_p8["Metric_Category"].dropna().unique().tolist()
+    selected_categories = st.sidebar.multiselect(
+        "📂 Metric Category",
+        categories,
+        default=categories
+    )
+
+    # Apply filters
+    df_p8_filtered = df_p8[
+        (df_p8["Date"] >= pd.to_datetime(selected_range[0])) &
+        (df_p8["Date"] <= pd.to_datetime(selected_range[1])) &
+        (df_p8["Metric_Category"].isin(selected_categories))
+    ]
+
+    # === KPI Cards ===
+    st.subheader("📊 Key Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+    latest_date = df_p8_filtered["Date"].max()
+    latest_data = df_p8_filtered[df_p8_filtered["Date"] == latest_date]
+
+    with col1:
+        pct_goals_set = latest_data[latest_data['Agg_Metric'] == '%_participant_goal_set']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == '%_participant_goal_set'].empty else 0
+        st.metric("% with Goals Set", f"{pct_goals_set:.1f}%")
+    with col2:
+        avg_goals = latest_data[latest_data['Agg_Metric'] == 'Total_goal_per_participant']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_goal_per_participant'].empty else 0
+        st.metric("Avg Goals per Participant", f"{avg_goals:.1f}")
+    with col3:
+        avg_goals_ach = latest_data[latest_data['Agg_Metric'] == 'avg_goals_achieved_per_participant_12mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'avg_goals_achieved_per_participant_12mth'].empty else 0
+        st.metric("Avg Goals Achieved (12m)", f"{avg_goals_ach:.1f}")
+    with col4:
+        total_goals_ach = latest_data[latest_data['Agg_Metric'] == 'Total_goals_achieved_all_participants_12mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_goals_achieved_all_participants_12mth'].empty else 0
+        st.metric("Total Goals Achieved (12m)", int(total_goals_ach))
+
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        housing_12 = latest_data[latest_data['Agg_Metric'] == 'Total_participants_secure_housing_12mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participants_secure_housing_12mth'].empty else 0
+        st.metric("Secure Housing (12m)", int(housing_12))
+    with col6:
+        housing_24 = latest_data[latest_data['Agg_Metric'] == 'Total_participants_secure_housing_24mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participants_secure_housing_24mth'].empty else 0
+        st.metric("Secure Housing (24m)", int(housing_24))
+    with col7:
+        employed_12 = latest_data[latest_data['Agg_Metric'] == 'Total_participants_employed_12mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participants_employed_12mth'].empty else 0
+        st.metric("Employed (12m)", int(employed_12))
+    with col8:
+        employed_24 = latest_data[latest_data['Agg_Metric'] == 'Total_participants_employed_24mth']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participants_employed_24mth'].empty else 0
+        st.metric("Employed (24m)", int(employed_24))
+
+    # ==== Tabs ====
+    tab1, tab2, tab3 = st.tabs([
+        "📊 Category Overview",
+        "📈 Time Series",
+        "🔍 Metric Details"
+    ])
+
+    # === Tab 1: Category Overview ===
+    with tab1:
+        st.header("📊 Goal Attainment & Progress Overview")
+
+        # # Progress Funnel
+        # funnel_steps = []
+        # if not latest_data.empty:
+        #     total_participants = 100  # Use actual total if present in your dataset
+        #     pct_goals = pct_goals_set if pct_goals_set else 0
+        #     avg_total_goals = avg_goals if avg_goals else 0
+        #     avg_ach = avg_goals_ach if avg_goals_ach else 0
+        #     total_ach = total_goals_ach if total_goals_ach else 0
+        #     funnel_steps = [
+        #         ("Participants", total_participants),
+        #         ("% with Goals Set", pct_goals),
+        #         ("Avg Goals/Participant", avg_total_goals),
+        #         ("Avg Goals Achieved", avg_ach),
+        #         ("Total Goals Achieved", total_ach)
+        #     ]
+        # funnel_df = pd.DataFrame(funnel_steps, columns=["Step","Value"])
+        # if not funnel_df.empty:
+        #     import plotly.graph_objects as go
+        #     fig_funnel = go.Figure(go.Funnel(
+        #         y=funnel_df["Step"], 
+        #         x=funnel_df["Value"],
+        #         textinfo="value+percent initial"
+        #     ))
+        #     fig_funnel.update_layout(title_text="Participant Goal Attainment Funnel")
+        #     st.plotly_chart(fig_funnel, use_container_width=True)
+
+        # Bar chart: Housing, Employment, Quality of Life at 12m/24m
+        outcome_codes = [
+            ("Total_participants_secure_housing_12mth", "Secure Housing", "12 Months"),
+            ("Total_participants_secure_housing_24mth", "Secure Housing", "24 Months"),
+            ("Total_participants_employed_12mth", "Employed", "12 Months"),
+            ("Total_participants_employed_24mth", "Employed", "24 Months"),
+            ("Avg_participants_qual_life_12mth", "Quality of Life (avg)", "12 Months"),
+            ("Avg_participants_qual_life_24mth", "Quality of Life (avg)", "24 Months"),
+        ]
+        bar_data = []
+        for code, outcome, period in outcome_codes:
+            val = latest_data[latest_data["Agg_Metric"] == code]['Agg_Value'].sum()
+            bar_data.append({"Outcome": outcome, "Period": period, "Value": val})
+        df_bar = pd.DataFrame(bar_data)
+        if not df_bar.empty:
+            fig_bar = px.bar(
+                df_bar, x="Outcome", y="Value",
+                color="Period", barmode="group",
+                text="Value", title="Key Outcomes at 12 and 24 Months"
+            )
+            fig_bar.update_traces(textposition="outside")
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+        # Participant stories / qualitative (placeholder)
+        # Prepare data for both metrics already in df_p8_filtered
+        story_ts = df_p8_filtered[df_p8_filtered["Agg_Metric"] == "Total_participant_story_mobilise_mktg"][["Date", "Agg_Value"]].copy()
+        story_ts["Metric"] = "Participant Stories in Marketing"
+
+        meetings_ts = df_p8_filtered[df_p8_filtered["Agg_Metric"] == "Total_participant_voice_mobilise_mtgs"][["Date", "Agg_Value"]].copy()
+        meetings_ts["Metric"] = "Voice in Leadership Meetings"
+
+        combined_ts = pd.concat([story_ts, meetings_ts], ignore_index=True)
+
+        if not combined_ts.empty:
+            fig = px.line(
+                combined_ts,
+                x="Date",
+                y="Agg_Value",
+                color="Metric",
+                markers=True,
+                title="Participant Voice & Representation Over Time"
+            )
+            fig.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Count",
+                legend_title="Metric"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data available for participant stories or leadership voice.")
+
+    # === Tab 2: Time Series ===
+    with tab2:
+        # Time series analysis
+        st.subheader("📈 Metrics Over Time")
+        
+        # Select metric for time series
+        available_metrics = df_p8_filtered['Agg_Metric'].unique()
+        metric_mapping = {clean_metric_name(metric): metric for metric in available_metrics}
+        clean_metric_names = list(metric_mapping.keys())
+        
+        selected_clean_metric = st.selectbox("Select Metric for Time Series", clean_metric_names)
+        selected_metric = metric_mapping[selected_clean_metric]
+
+        metric_data = df_p8_filtered[df_p8_filtered['Agg_Metric'] == selected_metric]
+        if not metric_data.empty:
+            fig_ts = px.line(
+                metric_data, x='Date', y='Agg_Value',
+                title=f"{selected_clean_metric} Over Time",
+                markers=True
+            )
+            fig_ts.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Value"
+            )
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.info("No data for this metric.")
+
+    # === Tab 3: Metric Details ===
+    with tab3:
+        st.subheader("🔍 Detailed Metrics")
+        if not df_p8_filtered.empty:
+            pivot_data = df_p8_filtered.pivot_table(
+                values='Agg_Value',
+                index='Agg_Metric',
+                columns='Date',
+                aggfunc='first'
+            ).reset_index()
+            st.dataframe(pivot_data, use_container_width=True)
+        else:
+            st.info("No records for selected filters.")
+
+# Page 9
+if page == "9. Homelessness humanised through storytelling":
+    st.header("📖 Homelessness Humanised Through Storytelling")
+    df_p9 = df[df["Pillar"] == 9].copy()
+    df_p9["Date"] = pd.to_datetime(df_p9["Date"], dayfirst=True)
+
+    # === Sidebar Filters ===
+    st.sidebar.subheader("Filters (Page 9)")
+    min_date, max_date = df_p9["Date"].min(), df_p9["Date"].max()
+    if len(df_p9["Date"].unique()) == 1:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p9_date")
+    else:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p9_date")
+    if len(selected_range) == 1:
+        selected_range = [selected_range[0], selected_range[0]]
+
+    categories = df_p9["Metric_Category"].dropna().unique().tolist()
+    selected_categories = st.sidebar.multiselect(
+        "📂 Metric Category",
+        categories,
+        default=categories
+    )
+
+    # Apply filters
+    df_p9_filtered = df_p9[
+        (df_p9["Date"] >= pd.to_datetime(selected_range[0])) &
+        (df_p9["Date"] <= pd.to_datetime(selected_range[1])) &
+        (df_p9["Metric_Category"].isin(selected_categories))
+    ]
+
+    # === KPI CARDS ===
+    st.subheader("📊 Key Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+    latest_date = df_p9_filtered["Date"].max()
+    latest_data = df_p9_filtered[df_p9_filtered["Date"] == latest_date]
+
+    with col1:
+        n_stories_mktg = latest_data[latest_data['Agg_Metric'] == 'Total_participant_story_mobilise_mktg']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participant_story_mobilise_mktg'].empty else 0
+        st.metric("Stories Used in Marketing", int(n_stories_mktg))
+    with col2:
+        n_stories_total = latest_data[latest_data['Agg_Metric'] == 'Total_participant_story_mobilise']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participant_story_mobilise'].empty else 0
+        st.metric("Total Participant Stories", int(n_stories_total))
+    with col3:
+        mentions_media = latest_data[latest_data['Agg_Metric'] == 'Total_Mentions_Earned_participant_story']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_Mentions_Earned_participant_story'].empty else 0
+        st.metric('Media Mentions (Stories)', int(mentions_media))
+    with col4:
+        engagement_sum = (
+            latest_data[latest_data['Agg_Metric'] == 'Total_LinkedIn_Engagements_participant_story']['Agg_Value'].sum() +
+            latest_data[latest_data['Agg_Metric'] == 'Total_Instagram_Engagements_participant_story']['Agg_Value'].sum() +
+            latest_data[latest_data['Agg_Metric'] == 'Total_Facebook_Engagements_participant_story']['Agg_Value'].sum() +
+            latest_data[latest_data['Agg_Metric'] == 'Total_TikTok_Engagements_participant_story']['Agg_Value'].sum()
+        )
+        st.metric("Total Story Engagements", int(engagement_sum))
+
+    # ==== Tabs ====
+    tab1, tab2, tab3 = st.tabs([
+        "📊 Category Overview",
+        "📈 Time Series",
+        "🔍 Metric Details"
+    ])
+
+    # === Tab 1: Category Overview ===
+    with tab1:
+        # st.header("📊 Storytelling Impact Overview")
+
+        # 1. Story Source Breakdown (Pie Chart)
+        st.subheader("Story Source Breakdown")
+        story_vals = [
+            dict(Type="Used in Marketing", Value=n_stories_mktg),
+            dict(Type="Total Stories Co-Created", Value=n_stories_total)
+        ]
+        df_story = pd.DataFrame(story_vals)
+        if df_story['Value'].sum() > 0:
+            fig_story = px.pie(
+                df_story, values="Value", names="Type"
+                # title="Stories: Co-created vs. Used in Marketing"
+            )
+            st.plotly_chart(fig_story, use_container_width=True)
+        else:
+            st.info("No story data for this period.")
+
+        # 2. Stacked Bar Chart: Participant Story Awareness Metrics Over Time
+        # st.subheader("Awareness Metrics by Month (Stacked)")
+        awareness_codes = [
+            ('Total_LinkedIn_Engagements_participant_story', 'LinkedIn'),
+            ('Total_Instagram_Engagements_participant_story', 'Instagram'),
+            ('Total_Facebook_Engagements_participant_story', 'Facebook'),
+            ('Total_TikTok_Engagements_participant_story', 'TikTok'),
+            ('Total_Mentions_Earned_participant_story', 'Media Mentions')
+        ]
+        # Build a tidy DataFrame for plotting
+        stack_data = []
+        # Get unique months in the filtered data
+        for code, label in awareness_codes:
+            rows = df_p9_filtered[df_p9_filtered['Agg_Metric'] == code]
+            for _, row in rows.iterrows():
+                stack_data.append({
+                    'Date': row['Date'],
+                    'Channel': label,
+                    'Value': row['Agg_Value']
+                })
+        df_stack = pd.DataFrame(stack_data)
+        if not df_stack.empty:
+            # Group by month if you want month granularity (can also do by exact date)
+            df_stack['Month'] = df_stack['Date'].dt.to_period('M').dt.to_timestamp()
+            fig_stack = px.bar(
+                df_stack,
+                x='Month', y='Value', color='Channel',
+                title="Monthly Participant Story Awareness Metrics (Stacked Bar)",
+                text_auto=True
+            )
+            fig_stack.update_layout(barmode='stack', xaxis_title="Month", yaxis_title="Engagements / Mentions")
+            st.plotly_chart(fig_stack, use_container_width=True)
+        else:
+            st.info("No awareness data available for the selected period.")
+
+        # 3. Timeline of Releases (Bar chart by date)
+        # st.subheader("Participant Stories Released Over Time")
+        releases_data = df_p9_filtered[df_p9_filtered["Agg_Metric"] == "Total_participant_story_mobilise"]
+        if not releases_data.empty:
+            fig_time = px.bar(
+                releases_data, x="Date", y="Agg_Value", text="Agg_Value",
+                title="Participant Stories Released Over Time"
+            )
+            st.plotly_chart(fig_time, use_container_width=True)
+        else:
+            st.info("No story release data for selected period.")
+
+        # 4. Qualitative Quotes / Word Cloud Placeholder
+        st.info("Word cloud, sentiment analysis and qualitative story quotes will appear here when text data is provided.")
+
+
+    # === Tab 2: Time Series ===
+    with tab2:
+        # Time series analysis
+        st.subheader("📈 Metrics Over Time")
+        
+        # Select metric for time series
+        available_metrics = df_p9_filtered['Agg_Metric'].unique()
+        metric_mapping = {clean_metric_name(metric): metric for metric in available_metrics}
+        clean_metric_names = list(metric_mapping.keys())
+        
+        selected_clean_metric = st.selectbox("Select Metric for Time Series", clean_metric_names)
+        selected_metric = metric_mapping[selected_clean_metric]
+
+        metric_data = df_p9_filtered[df_p9_filtered['Agg_Metric'] == selected_metric]
+        if not metric_data.empty:
+            fig_ts = px.line(
+                metric_data, x='Date', y='Agg_Value',
+                title=f"{selected_clean_metric} Over Time",
+                markers=True
+            )
+            fig_ts.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Value"
+            )
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.info("No data for this metric.")
+
+    # === Tab 3: Metric Details ===
+    with tab3:
+        st.subheader("🔍 Detailed Metrics")
+        if not df_p9_filtered.empty:
+            pivot_data = df_p9_filtered.pivot_table(
+                values='Agg_Value',
+                index='Agg_Metric',
+                columns='Date',
+                aggfunc='first'
+            ).reset_index()
+            st.dataframe(pivot_data, use_container_width=True)
+        else:
+            st.info("No records for selected filters.")
+            
+# Page 10
+if page == "10. New & innovative responses":
+    st.header("💡 New & Innovative Responses")
+    df_p10 = df[df["Pillar"] == 10].copy()
+    df_p10["Date"] = pd.to_datetime(df_p10["Date"], dayfirst=True)
+
+    # === Sidebar Filters ===
+    st.sidebar.subheader("Filters (Page 10)")
+    min_date, max_date = df_p10["Date"].min(), df_p10["Date"].max()
+    if len(df_p10["Date"].unique()) == 1:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p10_date")
+    else:
+        selected_range = st.sidebar.date_input("Date Range", [min_date, max_date], key="p10_date")
+    if len(selected_range) == 1:
+        selected_range = [selected_range[0], selected_range[0]]
+
+    categories = df_p10["Metric_Category"].dropna().unique().tolist()
+    selected_categories = st.sidebar.multiselect(
+        "📂 Metric Category",
+        categories,
+        default=categories
+    )
+
+    # Apply filters
+    df_p10_filtered = df_p10[
+        (df_p10["Date"] >= pd.to_datetime(selected_range[0])) &
+        (df_p10["Date"] <= pd.to_datetime(selected_range[1])) &
+        (df_p10["Metric_Category"].isin(selected_categories))
+    ]
+
+    # === KPI CARDS ===
+    st.subheader("📊 Key Metrics")
+    col1, col2, col3, col4 = st.columns(4)
+    latest_date = df_p10_filtered["Date"].max()
+    latest_data = df_p10_filtered[df_p10_filtered["Date"] == latest_date]
+
+    with col1:
+        pilots_in_dev = latest_data[latest_data['Agg_Metric'] == 'Total_pilot_projects_in_dev']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_pilot_projects_in_dev'].empty else 0
+        st.metric("Pilots In Development", int(pilots_in_dev))
+    with col2:
+        pilots_live = latest_data[latest_data['Agg_Metric'] == 'Total_pilot_projects_live_cumulative']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_pilot_projects_live_cumulative'].empty else 0
+        st.metric("Pilots Live (Cumulative)", int(pilots_live))
+    with col3:
+        sector_mentions = latest_data[latest_data['Agg_Metric'] == 'Total_sector_mentions_reports']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_sector_mentions_reports'].empty else 0
+        st.metric("Sector Mentions (Reports)", int(sector_mentions))
+    with col4:
+        partner_workshops = latest_data[latest_data['Agg_Metric'] == 'Total_partner_workshops_mobilise_hosted']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_partner_workshops_mobilise_hosted'].empty else 0
+        st.metric("Partner Workshops Hosted", int(partner_workshops))
+
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        requests_data = latest_data[latest_data['Agg_Metric'] == 'Total_requests_for_cumulative_data']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_requests_for_cumulative_data'].empty else 0
+        st.metric("Requests for Data", int(requests_data))
+    with col6:
+        avg_hours_intake = latest_data[latest_data['Agg_Metric'] == 'Avg_hours_intake_process_per_person']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Avg_hours_intake_process_per_person'].empty else 0
+        st.metric("Avg Intake Hours / Person", f"{avg_hours_intake:.2f}")
+    with col7:
+        avg_feedback = latest_data[latest_data['Agg_Metric'] == 'Avg_feedback_score_3p']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Avg_feedback_score_3p'].empty else 0
+        st.metric("3rd Party Feedback (1-5)", f"{avg_feedback:.2f}")
+    with col8:
+        part_feedback_sessions = latest_data[latest_data['Agg_Metric'] == 'Total_participant_program_feedback']['Agg_Value'].iloc[0] if not latest_data[latest_data['Agg_Metric'] == 'Total_participant_program_feedback'].empty else 0
+        st.metric("Participant Feedback Sessions", int(part_feedback_sessions))
+
+    # ==== Tabs ====
+    tab1, tab2, tab3 = st.tabs([
+        "📊 Category Overview",
+        "📈 Time Series",
+        "🔍 Metric Details"
+    ])
+
+    # === Tab 1: Category Overview ===
+    with tab1:
+        st.header("📊 Innovation & Efficiency Overview")
+
+        # 1. Initiative Tracker/Funnel Chart: Pilots in development -> live
+        if not latest_data.empty:
+            import plotly.graph_objects as go
+            funnel_steps = [
+                ("Pilot Projects (In Dev)", pilots_in_dev),
+                ("Pilots Live (Cumulative)", pilots_live)
+            ]
+            funnel_df = pd.DataFrame(funnel_steps, columns=["Stage", "Value"])
+            fig_funnel = go.Figure(go.Funnel(
+                y=funnel_df["Stage"], 
+                x=funnel_df["Value"],
+                textinfo="value+percent initial"
+            ))
+            fig_funnel.update_layout(title_text="Innovation Funnel: Idea to Scale")
+            st.plotly_chart(fig_funnel, use_container_width=True)
+
+        # # 2. Table of Innovations by Category
+        # st.subheader("Innovations Table by Category")
+        # innovation_metrics = [
+        #     ('Total_pilot_projects_in_dev', 'Pilot Projects in Development'),
+        #     ('Total_pilot_projects_live_cumulative', 'Pilot Projects Live'),
+        #     ('Total_requests_for_cumulative_data', 'Requests for Data Use'),
+        #     ('Total_sector_mentions_reports', 'Sector Mentions'),
+        #     ('Total_partner_workshops_mobilise_hosted', 'Workshops Hosted'),
+        #     ('Total_participant_program_feedback', 'Participant Feedback Sessions')
+        # ]
+        # innovation_rows = []
+        # for code, label in innovation_metrics:
+        #     val = latest_data[latest_data['Agg_Metric'] == code]['Agg_Value'].sum()
+        #     innovation_rows.append({'Innovation': label, 'Count': val})
+        # df_innov = pd.DataFrame(innovation_rows)
+        # st.dataframe(df_innov, use_container_width=True)
+
+        # 3. Partner Uptake Line Chart
+        uptake_data = df_p10_filtered[df_p10_filtered["Agg_Metric"] == "Total_requests_for_cumulative_data"]
+        if not uptake_data.empty:
+            fig_line = px.line(
+                uptake_data, x="Date", y="Agg_Value",
+                title="Partner Uptake: Requests for Mobilise Tools/Data Over Time",
+                markers=True
+            )
+            st.plotly_chart(fig_line, use_container_width=True)
+
+        # 4. Before/After Bar (Avg. Intake Hours)
+        # st.subheader("Efficiency – Before/After Comparison")
+        intake_time_data = df_p10_filtered[df_p10_filtered["Agg_Metric"] == "Avg_hours_intake_process_per_person"].sort_values("Date")
+
+        if intake_time_data.shape[0] >= 2:
+            before_value = intake_time_data.iloc[0]['Agg_Value']
+            after_value = intake_time_data.iloc[-1]['Agg_Value']
+            before_month = intake_time_data.iloc[0]['Date'].strftime("%b %Y")
+            after_month = intake_time_data.iloc[-1]['Date'].strftime("%b %Y")
+            
+            fig_bar = px.bar(
+                x=[f"Before\n({before_month})", f"After\n({after_month})"],
+                y=[before_value, after_value],
+                text=[before_value, after_value],
+                title="Avg Intake Process Hours – Before/After Change (by Month)"
+            )
+            fig_bar.update_traces(textposition="outside")
+            st.plotly_chart(fig_bar, use_container_width=True)
+        else:
+            st.info("More than one timepoint needed for before/after comparison.")
+
+
+        # 5. Feedback Bar Chart
+        # st.subheader("Feedback Score Bar Chart (Third Party / Partner)")
+        feedback_data = df_p10_filtered[df_p10_filtered["Agg_Metric"] == "Avg_feedback_score_3p"]
+        if not feedback_data.empty:
+            fig_fb = px.bar(
+                feedback_data, x="Date", y="Agg_Value", text="Agg_Value",
+                title="Third Party / Partner Feedback Over Time"
+            )
+            fig_fb.update_traces(textposition="outside")
+            st.plotly_chart(fig_fb, use_container_width=True)
+
+        # 6. Co-Design Involvement Tracker
+        # st.subheader("Tracker: Participant Feedback Sessions (Co-Design)")
+        co_design_data = df_p10_filtered[df_p10_filtered["Agg_Metric"] == "Total_participant_program_feedback"]
+        if not co_design_data.empty:
+            fig_cod = px.bar(
+                co_design_data, x="Date", y="Agg_Value", text="Agg_Value",
+                title="Participant Feedback Sessions Over Time"
+            )
+            fig_cod.update_traces(textposition="outside")
+            st.plotly_chart(fig_cod, use_container_width=True)
+
+        # 7. Qual Quotes/Process Updates Section (Placeholder)
+        st.info("Qualitative quotes and process update summaries will appear here as data becomes available.")
+
+    # === Tab 2: Time Series ===
+    with tab2:
+        # Time series analysis
+        st.subheader("📈 Metrics Over Time")
+        
+        # Select metric for time series
+        available_metrics = df_p10_filtered['Agg_Metric'].unique()
+        metric_mapping = {clean_metric_name(metric): metric for metric in available_metrics}
+        clean_metric_names = list(metric_mapping.keys())
+        
+        selected_clean_metric = st.selectbox("Select Metric for Time Series", clean_metric_names)
+        selected_metric = metric_mapping[selected_clean_metric]
+
+        metric_data = df_p10_filtered[df_p10_filtered['Agg_Metric'] == selected_metric]
+        if not metric_data.empty:
+            fig_ts = px.line(
+                metric_data, x='Date', y='Agg_Value',
+                title=f"{selected_clean_metric} Over Time",
+                markers=True
+            )
+            fig_ts.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Value"
+            )
+            st.plotly_chart(fig_ts, use_container_width=True)
+        else:
+            st.info("No data for this metric.")
+
+    # === Tab 3: Metric Details ===
+    with tab3:
+        st.subheader("🔍 Detailed Metrics")
+        if not df_p10_filtered.empty:
+            pivot_data = df_p10_filtered.pivot_table(
+                values='Agg_Value',
+                index='Agg_Metric',
+                columns='Date',
+                aggfunc='first'
+            ).reset_index()
+            st.dataframe(pivot_data, use_container_width=True)
+        else:
+            st.info("No records for selected filters.")
+
 
 
 st.markdown("---")

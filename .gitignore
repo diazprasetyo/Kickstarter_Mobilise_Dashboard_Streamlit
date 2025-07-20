@@ -1,18 +1,41 @@
 # Python virtual environment
 venv/
+.venv/
+env/
+
+# Python cache and compiled files
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 
 # Mac/Windows files & folders
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+
+# Project-specific files
 streamlit_app_old.py
 kickstarter_data.ipynb
 data_for_streamlit_demo.ipynb
 data/
 
-# VSCode settings (optional)
+# IDE settings
 .vscode/
+.idea/
+*.swp
+*.swo
 
-# Environment files (if any)
+# Environment and secrets
 .env
+.env.local
+.env.*.local
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
